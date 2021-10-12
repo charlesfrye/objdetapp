@@ -1,21 +1,35 @@
 import random
 from datetime import datetime
+import os
 
 import av
 import cv2
+import numpy as np
+import PIL
 from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
 import torch
 import wandb
 
+run = wandb.init(project="objdetapp-sandbox", job_type="download_model")
+artifact = run.use_artifact(
+        "charlesfrye/objdetapp/run_2r7xmnog_model:best",
+        type="model")
+artifact_dir = artifact.download()
+run.finish()
 
-model = torch.hub.load("ultralytics/yolov5", "yolov5s")
+
+weights_path = artifact_dir + "/" + "best.pt"
+
+model = torch.hub.load("ultralytics/yolov5", "custom", weights_path)
+
 
 class LoggedObjDetProcessor(VideoProcessorBase):
-    model = model
 
     def __init__(self):
         if wandb.run is None:
-            wandb.init(project="objdetapp-sandbox", entity="charlesfrye", job_type="inference",
+            wandb.init(project="objdetapp-sandbox",
+                       entity="charlesfrye",
+                       job_type="inference",
                        name=f"inference-streamlit-{get_now_strf()}")
         self.counter, self.max_log = 0, 32
         self.inference_table = wandb.Table(columns=["input", "output", "time"])
@@ -33,7 +47,10 @@ class LoggedObjDetProcessor(VideoProcessorBase):
         return av.VideoFrame.from_ndarray(processed_img, format="rgb24")
 
     def infer_img(self, img):
-        results = model(img)
+        PIL.Image.fromarray(img).save("infer.png")
+        img = np.moveaxis(img, -1, 0)
+        img = torch.from_numpy(img.copy()).float() / 255.0
+        results = model("infer.png")
         results.render()
         return results
 
