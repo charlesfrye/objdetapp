@@ -1,24 +1,34 @@
-import random
 from datetime import datetime
 import os
+from pathlib import Path
+import random
 
 import av
 import cv2
 import numpy as np
 import PIL
+import streamlit as st
 from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
 import torch
 import wandb
 
-run = wandb.init(project="objdetapp-sandbox", job_type="download_model")
-artifact = run.use_artifact(
-        "charlesfrye/objdetapp/run_2r7xmnog_model:best",
-        type="model")
-artifact_dir = artifact.download()
-run.finish()
+artifacts_dir = Path("artifacts")
+ENTITY = "charlesfrye"
+PROJECT = "objdetapp"
+MODEL = "run_2r7xmnog_model"
+VERSION = "v9"
+artifact_name = f"{MODEL}:{VERSION}"
+artifact_dir = artifacts_dir / artifact_name
+artifact = f"{ENTITY}/{PROJECT}/{artifact_name}"
+
+if not os.path.exists(artifact_dir):
+    run = wandb.init(project="objdetapp-sandbox", job_type="download_model")
+    artifact = run.use_artifact(artifact)
+    artifact_dir = artifact.download()
+    run.finish()
 
 
-weights_path = artifact_dir + "/" + "best.pt"
+weights_path = artifact_dir / "best.pt"
 
 model = torch.hub.load("ultralytics/yolov5", "custom", weights_path)
 
