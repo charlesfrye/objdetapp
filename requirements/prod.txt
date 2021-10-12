@@ -1,0 +1,4 @@
+-r common.txt
+streamlit
+streamlit-webrtc
+opencv-python
